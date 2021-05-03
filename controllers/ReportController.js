@@ -29,7 +29,7 @@ exports.download = async function (req, res) {
       ],
     })
       .then((datas) => {
-        console.log(JSON.stringify(datas));
+        console.log(`datas: ${JSON.stringify(datas)}`);
         let workbook = new excel.Workbook();
         let worksheet = workbook.addWorksheet("Tutorials");
         worksheet.getCell("A1:F2").border = {
@@ -86,10 +86,8 @@ exports.download = async function (req, res) {
                 },
                 include: ["tally"],
               }).then((inputs) => {
+                console.log(`inputs: ${JSON.stringify(inputs)}`)
                 inputs.forEach((input) => {
-                    typeof input.tally[0] !== "undefined"
-                      ? console.log(input.tally[0].jumlah_koin)
-                      : ""
                   worksheet.getCell("G" + rowTally).value =
                     typeof input.tally[0] !== "undefined"
                       ? input.tally[0].jumlah_koin
@@ -117,6 +115,17 @@ exports.download = async function (req, res) {
                       : "";
                   rowTally++;
                 });
+                res.setHeader(
+                  "Content-Type",
+                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                );
+                res.setHeader(
+                  "Content-Disposition",
+                  "attachment; filename=" + "tutorials.xlsx"
+                );
+                return workbook.xlsx.write(res).then(function () {
+                  res.status(200).end();
+                });
               });
             });
           });
@@ -124,17 +133,6 @@ exports.download = async function (req, res) {
           rowOutput = row;
           rowPivot = row;
           rowTally = row;
-        });
-        res.setHeader(
-          "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        );
-        res.setHeader(
-          "Content-Disposition",
-          "attachment; filename=" + "tutorials.xlsx"
-        );
-        return workbook.xlsx.write(res).then(function () {
-          res.status(200).end();
         });
       })
       .catch((err) => {
