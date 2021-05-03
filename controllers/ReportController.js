@@ -28,7 +28,7 @@ exports.download = async function (req, res) {
         },
       ],
     })
-      .then((datas) => {
+      .then(async (datas) => {
         console.log(`datas: ${JSON.stringify(datas)}`);
         let workbook = new excel.Workbook();
         let worksheet = workbook.addWorksheet("Tutorials");
@@ -61,18 +61,18 @@ exports.download = async function (req, res) {
         var rowOutput = 3;
         var rowPivot = 3;
         var rowTally = 3;
-        datas.forEach((data) => {
+        await Promise.all(datas.map(async (data) => {
           worksheet.getCell("A" + row).value = data.id;
           worksheet.mergeCells("A" + row + ":A" + (row + 11));
           
-          data.output.forEach((outputs) => {
+          await Promise.all(data.output.map(async (outputs) => {
             worksheet.mergeCells("B" + rowOutput + ":B" + (rowOutput + 5));
             worksheet.mergeCells("C" + rowOutput + ":C" + (rowOutput + 5));
             worksheet.getCell("B" + rowOutput).value = outputs.id;
             worksheet.getCell("C" + rowOutput).value = outputs.jumlah_koin;
             rowOutput += 6;
 
-            outputs.pivots.forEach((pivot) => {
+            await Promise.all(outputs.pivots.map(async (pivot) => {
               worksheet.mergeCells("D" + rowPivot + ":D" + (rowPivot + 1));
               worksheet.mergeCells("E" + rowPivot + ":E" + (rowPivot + 1));
               worksheet.mergeCells("F" + rowPivot + ":F" + (rowPivot + 1));
@@ -80,59 +80,59 @@ exports.download = async function (req, res) {
               worksheet.getCell("E" + rowPivot).value = pivot.jumlah_koin;
               worksheet.getCell("F" + rowPivot).value = pivot.jenis_koin;
               rowPivot += 2;
-              Pivot.findAll({
+              const inputs = await Pivot.findAll({
                 where: {
                   [Op.and]: [{ Output_id: outputs.id }, { Input_id: pivot.id }],
                 },
                 include: ["tally"],
-              }).then((inputs) => {
-                console.log(`inputs: ${JSON.stringify(inputs)}`)
-                inputs.forEach((input) => {
-                  worksheet.getCell("G" + rowTally).value =
-                    typeof input.tally[0] !== "undefined"
-                      ? input.tally[0].jumlah_koin
-                      : "";
-                  worksheet.getCell("H" + rowTally).value =
-                    typeof input.tally[1] !== "undefined"
-                      ? input.tally[1].jumlah_koin
-                      : "";
-                  worksheet.getCell("I" + rowTally).value =
-                    typeof input.tally[2] !== "undefined"
-                      ? input.tally[2].jumlah_koin
-                      : "";
-                  rowTally++;
-                  worksheet.getCell("G" + rowTally).value =
-                    typeof input.tally[3] !== "undefined"
-                      ? input.tally[3].jumlah_koin
-                      : "";
-                  worksheet.getCell("H" + rowTally).value =
-                    typeof input.tally[4] !== "undefined" 
-                      ? input.tally[4].jumlah_koin
-                      : "";
-                  worksheet.getCell("I" + rowTally).value =
-                    typeof input.tally[5] !== "undefined" 
-                      ? input.tally[5].jumlah_koin
-                      : "";
-                  rowTally++;
-                });
-                res.setHeader(
-                  "Content-Type",
-                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                );
-                res.setHeader(
-                  "Content-Disposition",
-                  "attachment; filename=" + "tutorials.xlsx"
-                );
-                return workbook.xlsx.write(res).then(function () {
-                  res.status(200).end();
-                });
+              })
+              
+              console.log(`inputs: ${JSON.stringify(inputs)}`)
+              inputs.forEach((input) => {
+                worksheet.getCell("G" + rowTally).value =
+                  typeof input.tally[0] !== "undefined"
+                    ? input.tally[0].jumlah_koin
+                    : "";
+                worksheet.getCell("H" + rowTally).value =
+                  typeof input.tally[1] !== "undefined"
+                    ? input.tally[1].jumlah_koin
+                    : "";
+                worksheet.getCell("I" + rowTally).value =
+                  typeof input.tally[2] !== "undefined"
+                    ? input.tally[2].jumlah_koin
+                    : "";
+                rowTally++;
+                worksheet.getCell("G" + rowTally).value =
+                  typeof input.tally[3] !== "undefined"
+                    ? input.tally[3].jumlah_koin
+                    : "";
+                worksheet.getCell("H" + rowTally).value =
+                  typeof input.tally[4] !== "undefined" 
+                    ? input.tally[4].jumlah_koin
+                    : "";
+                worksheet.getCell("I" + rowTally).value =
+                  typeof input.tally[5] !== "undefined" 
+                    ? input.tally[5].jumlah_koin
+                    : "";
+                rowTally++;
               });
-            });
-          });
+            }));
+          }));
           row += 12;
           rowOutput = row;
           rowPivot = row;
           rowTally = row;
+        }));
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+          "Content-Disposition",
+          "attachment; filename=" + "tutorials.xlsx"
+        );
+        return workbook.xlsx.write(res).then(function () {
+          res.status(200).end();
         });
       })
       .catch((err) => {
